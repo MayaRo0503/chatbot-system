@@ -8,6 +8,11 @@ import MessageInput from "./MessageInput";
 import BotHeader from "./BotHeader";
 import ConversationStarters from "./ConversationStarters";
 import { ChatStorageManager, type ChatSession } from "@/utils/chatStorage";
+import {
+  SummaryGenerator,
+  type ConversationSummary,
+} from "@/utils/summaryGenerator";
+import SummaryDisplay from "./SummaryDisplay";
 
 interface ChatBotProps {
   config: BotConfig;
@@ -78,6 +83,9 @@ export default function ChatBot({ config }: ChatBotProps) {
     null
   );
   const [error, setError] = useState<string | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [conversationSummary, setConversationSummary] =
+    useState<ConversationSummary | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -289,6 +297,19 @@ export default function ChatBot({ config }: ChatBotProps) {
         setWaitingForFinalResponse(false);
         saveCurrentSession(finalMessages, true);
         ChatStorageManager.markSessionCompleted(config.id);
+
+        // יצירת סיכום שיחה
+        if (content.trim() === "כן") {
+          const summary = SummaryGenerator.generateSummary(
+            finalMessages,
+            config,
+            currentSession?.startTime || new Date(),
+            new Date()
+          );
+          setConversationSummary(summary);
+          setShowSummary(true);
+        }
+
         // עדכון סטטיסטיקות - שיחה הושלמה
         await updateStats(config.id, config.name, "conversation_completed");
       }
@@ -324,6 +345,8 @@ export default function ChatBot({ config }: ChatBotProps) {
   };
 
   const handleStartNewConversation = () => {
+    setShowSummary(false);
+    setConversationSummary(null);
     ChatStorageManager.clearSession(config.id);
     setMessages([]);
     setConversationStarted(false);
@@ -399,6 +422,16 @@ export default function ChatBot({ config }: ChatBotProps) {
           )}
         </div>
       </div>
+      {showSummary && conversationSummary && (
+        <SummaryDisplay
+          summary={conversationSummary}
+          onClose={() => setShowSummary(false)}
+          onStartNewConversation={() => {
+            setShowSummary(false);
+            handleStartNewConversation();
+          }}
+        />
+      )}
     </div>
   );
 }
