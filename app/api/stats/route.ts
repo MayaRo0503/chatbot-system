@@ -26,6 +26,7 @@ interface StatsData {
 
 // פונקציה להערכת מספר טוקנים (4 תווים = 1 טוקן בערך)
 function estimateTokens(text: string): number {
+  if (!text || typeof text !== "string") return 0;
   return Math.ceil(text.length / 4);
 }
 
@@ -38,11 +39,18 @@ function calculateCost(inputTokens: number, outputTokens: number): number {
 
 async function readStats(): Promise<StatsData> {
   try {
+    // וודא שהתיקייה קיימת
+    const dir = path.dirname(STATS_FILE_PATH);
+    await fs.mkdir(dir, { recursive: true });
+
     const data = await fs.readFile(STATS_FILE_PATH, "utf8");
     return JSON.parse(data);
   } catch (error) {
-    console.error("Error reading stats file:", error);
-    return {};
+    console.log("Stats file not found or invalid, creating new one");
+    // אם הקובץ לא קיים, צור אותו עם נתונים ריקים
+    const defaultStats: StatsData = {};
+    await writeStats(defaultStats);
+    return defaultStats;
   }
 }
 
@@ -50,7 +58,6 @@ async function writeStats(stats: StatsData): Promise<void> {
   try {
     const dir = path.dirname(STATS_FILE_PATH);
     await fs.mkdir(dir, { recursive: true });
-
     await fs.writeFile(STATS_FILE_PATH, JSON.stringify(stats, null, 2));
   } catch (error) {
     console.error("Error writing stats file:", error);
@@ -73,8 +80,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { botId, botName, type, inputText, outputText } =
-      await request.json();
+    const body = await request.json();
+    const { botId, botName, type, inputText, outputText } = body;
 
     if (!botId || !botName || !type) {
       return NextResponse.json(
