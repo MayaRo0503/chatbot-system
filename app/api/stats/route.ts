@@ -1,9 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { StatsManager, type StatsUpdateType } from "@/lib/statsManager";
+import {
+  StatsManagerRedis,
+  type StatsUpdateType,
+} from "@/lib/statsManagerRedis";
 
 export async function GET() {
   try {
-    const statsManager = StatsManager.getInstance();
+    const statsManager = StatsManagerRedis.getInstance();
     const stats = await statsManager.readStats();
 
     return NextResponse.json(stats, {
@@ -75,7 +78,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const statsManager = StatsManager.getInstance();
+    const statsManager = StatsManagerRedis.getInstance();
     const updatedStats = await statsManager.updateStats(
       botId,
       botName,
