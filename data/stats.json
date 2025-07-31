@@ -1,0 +1,56 @@
+{
+  "chozeh-lev": {
+    "name": "חוזה-לב",
+    "conversationStarts": 0,
+    "userMessages": 0,
+    "completedConversations": 0,
+    "estimatedInputTokens": 0,
+    "estimatedOutputTokens": 0,
+    "totalCost": 0
+  },
+  "filter-mind": {
+    "name": "Filter Mind",
+    "conversationStarts": 0,
+    "userMessages": 0,
+    "completedConversations": 0,
+    "estimatedInputTokens": 0,
+    "estimatedOutputTokens": 0,
+    "totalCost": 0
+  },
+  "master-mind": {
+    "name": "Master Mind",
+    "conversationStarts": 0,
+    "userMessages": 0,
+    "completedConversations": 0,
+    "estimatedInputTokens": 0,
+    "estimatedOutputTokens": 0,
+    "totalCost": 0
+  },
+  "asserti-voice": {
+    "name": "AssertiVoice",
+    "conversationStarts": 0,
+    "userMessages": 0,
+    "completedConversations": 0,
+    "estimatedInputTokens": 0,
+    "estimatedOutputTokens": 0,
+    "totalCost": 0
+  },
+  "detoxa": {
+    "name": "Detoxa",
+    "conversationStarts": 0,
+    "userMessages": 0,
+    "completedConversations": 0,
+    "estimatedInputTokens": 0,
+    "estimatedOutputTokens": 0,
+    "totalCost": 0
+  },
+  "love-craft": {
+    "name": "LoveCraft",
+    "conversationStarts": 0,
+    "userMessages": 0,
+    "completedConversations": 0,
+    "estimatedInputTokens": 0,
+    "estimatedOutputTokens": 0,
+    "totalCost": 0
+  }
+}

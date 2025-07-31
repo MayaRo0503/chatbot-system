@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* RTL Support - מתוקן */
+html[dir="rtl"] {
+  text-align: right;
+}
+
+html[dir="rtl"] .justify-end {
+  justify-content: flex-start;
+}
+
+html[dir="rtl"] .justify-start {
+  justify-content: flex-end;
+}
+
+/* Responsive improvements */
+@media (max-width: 640px) {
+  .min-h-screen {
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Better touch targets for mobile */
+@media (max-width: 768px) {
+  button,
+  a,
+  input,
+  textarea {
+    min-height: 44px;
+  }
+}
+
+/* Improved text readability */
+.whitespace-pre-wrap {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Modern animations */
+@keyframes slide-in-from-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.slide-in-from-bottom-2 {
+  animation-name: slide-in-from-bottom;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* תיקון לוודא שהלייאאוט נשאר אנכי */
+.chat-container {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+}
+
+.message-input-container {
+  position: relative !important;
+  width: 100% !important;
+  flex-shrink: 0 !important;
+}
