@@ -1,12 +1,12 @@
 {
   "chozeh-lev": {
     "name": "חוזה-לב",
-    "conversationStarts": 0,
+    "conversationStarts": 1,
     "userMessages": 0,
     "completedConversations": 0,
-    "estimatedInputTokens": 0,
-    "estimatedOutputTokens": 0,
-    "totalCost": 0
+    "estimatedInputTokens": 1210,
+    "estimatedOutputTokens": 57,
+    "totalCost": 0.00021569999999999998
   },
   "filter-mind": {
     "name": "Filter Mind",

@@ -27,7 +27,7 @@ function isPendingResponse(botResponse: string): boolean {
   );
 }
 
-// פונקציה לעדכון סטטיסטיקות
+// פונקציה לעדכון סטטיסטיקות עם טיפול בשגיאות
 async function updateStats(
   botId: string,
   botName: string,
@@ -36,7 +36,7 @@ async function updateStats(
   outputText?: string
 ) {
   try {
-    await fetch("/api/stats", {
+    const response = await fetch("/api/stats", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -49,8 +49,18 @@ async function updateStats(
         outputText,
       }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Stats API error:", errorData);
+      return;
+    }
+
+    const result = await response.json();
+    console.log("Stats updated successfully:", result.message);
   } catch (error) {
     console.error("Error updating stats:", error);
+    // לא נזרוק שגיאה כדי לא לשבור את הצ'אט
   }
 }
 
@@ -59,8 +69,8 @@ export default function ChatBot({ config }: ChatBotProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [conversationStarted, setConversationStarted] = useState(false);
   const [conversationLocked, setConversationLocked] = useState(false);
-  const [pendingResponse, setPendingResponse] = useState(false); // מצב חדש - מחכה לתגובה
-  const [waitingForFinalResponse, setWaitingForFinalResponse] = useState(false); // מחכה לתגובה סופית אחרי כן/לא
+  const [pendingResponse, setPendingResponse] = useState(false);
+  const [waitingForFinalResponse, setWaitingForFinalResponse] = useState(false);
   const [selectedGender, setSelectedGender] = useState<
     "male" | "female" | null
   >(null);
@@ -271,29 +281,26 @@ export default function ChatBot({ config }: ChatBotProps) {
       };
 
       const finalMessages = [...updatedMessages, assistantMessage];
+      setMessages(finalMessages);
 
-      // אם חיכינו לתגובה סופית - נועל את השיחה אוטומטית לפני עדכון ההודעות
+      // אם חיכינו לתגובה סופית - נועל את השיחה אוטומטית
       if (waitingForFinalResponse) {
         setConversationLocked(true);
         setWaitingForFinalResponse(false);
-        setMessages(finalMessages);
         saveCurrentSession(finalMessages, true);
         ChatStorageManager.markSessionCompleted(config.id);
         // עדכון סטטיסטיקות - שיחה הושלמה
         await updateStats(config.id, config.name, "conversation_completed");
-      } else {
-        setMessages(finalMessages);
-
-        // אם הבוט מחכה לתגובה (שאלה ביניים)
-        if (isPendingResponse(data.reply)) {
-          setPendingResponse(true);
-          saveCurrentSession(finalMessages);
-        }
-        // אחרת - המשך שיחה רגילה
-        else {
-          setPendingResponse(false);
-          saveCurrentSession(finalMessages);
-        }
+      }
+      // אם הבוט מחכה לתגובה (שאלה ביניים)
+      else if (isPendingResponse(data.reply)) {
+        setPendingResponse(true);
+        saveCurrentSession(finalMessages);
+      }
+      // אחרת - המשך שיחה רגילה
+      else {
+        setPendingResponse(false);
+        saveCurrentSession(finalMessages);
       }
 
       // עדכון סטטיסטיקות - הודעת משתמש עם טקסטים לחישוב טוקנים

@@ -1,78 +1,25 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
-
-const STATS_FILE_PATH = path.join(process.cwd(), "data", "stats.json");
-
-// מחירי GPT-4o-mini (לפי $1M טוקנים)
-const GPT_4O_MINI_PRICING = {
-  input: 0.15, // $0.15 per 1M input tokens
-  output: 0.6, // $0.60 per 1M output tokens
-};
-
-interface BotStats {
-  name: string;
-  conversationStarts: number;
-  userMessages: number;
-  completedConversations: number;
-  estimatedInputTokens: number;
-  estimatedOutputTokens: number;
-  totalCost: number;
-}
-
-interface StatsData {
-  [botId: string]: BotStats;
-}
-
-// פונקציה להערכת מספר טוקנים (4 תווים = 1 טוקן בערך)
-function estimateTokens(text: string): number {
-  if (!text || typeof text !== "string") return 0;
-  return Math.ceil(text.length / 4);
-}
-
-// פונקציה לחישוב עלות
-function calculateCost(inputTokens: number, outputTokens: number): number {
-  const inputCost = (inputTokens / 1_000_000) * GPT_4O_MINI_PRICING.input;
-  const outputCost = (outputTokens / 1_000_000) * GPT_4O_MINI_PRICING.output;
-  return inputCost + outputCost;
-}
-
-async function readStats(): Promise<StatsData> {
-  try {
-    // וודא שהתיקייה קיימת
-    const dir = path.dirname(STATS_FILE_PATH);
-    await fs.mkdir(dir, { recursive: true });
-
-    const data = await fs.readFile(STATS_FILE_PATH, "utf8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.log("Stats file not found or invalid, creating new one");
-    // אם הקובץ לא קיים, צור אותו עם נתונים ריקים
-    const defaultStats: StatsData = {};
-    await writeStats(defaultStats);
-    return defaultStats;
-  }
-}
-
-async function writeStats(stats: StatsData): Promise<void> {
-  try {
-    const dir = path.dirname(STATS_FILE_PATH);
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(STATS_FILE_PATH, JSON.stringify(stats, null, 2));
-  } catch (error) {
-    console.error("Error writing stats file:", error);
-    throw error;
-  }
-}
+import { StatsManager, type StatsUpdateType } from "@/lib/statsManager";
 
 export async function GET() {
   try {
-    const stats = await readStats();
-    return NextResponse.json(stats);
+    const statsManager = StatsManager.getInstance();
+    const stats = await statsManager.readStats();
+
+    return NextResponse.json(stats, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    });
   } catch (error) {
     console.error("GET /api/stats error:", error);
     return NextResponse.json(
-      { error: "Failed to read stats" },
+      {
+        error: "Failed to read stats",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }
@@ -80,71 +27,75 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { botId, botName, type, inputText, outputText } = body;
-
-    if (!botId || !botName || !type) {
+    // בדיקת תקינות הבקשה
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Invalid JSON in request body" },
         { status: 400 }
       );
     }
 
-    const stats = await readStats();
+    const { botId, botName, type, inputText, outputText } = body;
 
-    // אם הבוט לא קיים, צור אותו
-    if (!stats[botId]) {
-      stats[botId] = {
-        name: botName,
-        conversationStarts: 0,
-        userMessages: 0,
-        completedConversations: 0,
-        estimatedInputTokens: 0,
-        estimatedOutputTokens: 0,
-        totalCost: 0,
-      };
+    // בדיקת שדות חובה
+    if (!botId || typeof botId !== "string") {
+      return NextResponse.json(
+        { error: "Missing or invalid botId" },
+        { status: 400 }
+      );
     }
 
-    // עדכן לפי סוג הפעולה
-    if (type === "conversation_start") {
-      stats[botId].conversationStarts += 1;
-
-      // הערכת טוקנים להתחלת שיחה (system prompt + starter message)
-      if (inputText && outputText) {
-        const inputTokens = estimateTokens(inputText);
-        const outputTokens = estimateTokens(outputText);
-
-        stats[botId].estimatedInputTokens += inputTokens;
-        stats[botId].estimatedOutputTokens += outputTokens;
-
-        const cost = calculateCost(inputTokens, outputTokens);
-        stats[botId].totalCost += cost;
-      }
-    } else if (type === "user_message") {
-      stats[botId].userMessages += 1;
-
-      // הערכת טוקנים להודעת משתמש
-      if (inputText && outputText) {
-        const inputTokens = estimateTokens(inputText);
-        const outputTokens = estimateTokens(outputText);
-
-        stats[botId].estimatedInputTokens += inputTokens;
-        stats[botId].estimatedOutputTokens += outputTokens;
-
-        const cost = calculateCost(inputTokens, outputTokens);
-        stats[botId].totalCost += cost;
-      }
-    } else if (type === "conversation_completed") {
-      stats[botId].completedConversations += 1;
+    if (!botName || typeof botName !== "string") {
+      return NextResponse.json(
+        { error: "Missing or invalid botName" },
+        { status: 400 }
+      );
     }
 
-    await writeStats(stats);
+    if (!type || typeof type !== "string") {
+      return NextResponse.json(
+        { error: "Missing or invalid type" },
+        { status: 400 }
+      );
+    }
 
-    return NextResponse.json({ success: true, stats: stats[botId] });
+    // בדיקת תקינות סוג העדכון
+    const validTypes: StatsUpdateType[] = [
+      "conversation_start",
+      "user_message",
+      "conversation_completed",
+    ];
+    if (!validTypes.includes(type as StatsUpdateType)) {
+      return NextResponse.json(
+        { error: `Invalid type. Must be one of: ${validTypes.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    const statsManager = StatsManager.getInstance();
+    const updatedStats = await statsManager.updateStats(
+      botId,
+      botName,
+      type as StatsUpdateType,
+      inputText,
+      outputText
+    );
+
+    return NextResponse.json({
+      success: true,
+      stats: updatedStats,
+      message: `Successfully updated ${type} for ${botName}`,
+    });
   } catch (error) {
     console.error("POST /api/stats error:", error);
     return NextResponse.json(
-      { error: "Failed to update stats" },
+      {
+        error: "Failed to update stats",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }
